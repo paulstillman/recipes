@@ -1,0 +1,47 @@
+---
+layout: base.njk
+title: Recipes
+bodyClass: home
+---
+<header class="home-head">
+  <h1>Recipes</h1>
+  <div class="search-row">
+    <input type="search" id="q" placeholder="Search recipes, tags or ingredients" autocomplete="off" aria-label="Search">
+    <div class="view-toggle" role="group" aria-label="View">
+      <button type="button" data-view="grid" aria-pressed="true" title="Grid">▦</button>
+      <button type="button" data-view="list" aria-pressed="false" title="List">☰</button>
+    </div>
+  </div>
+  <div class="chips" id="chips">
+    {% for t in collections.recipes | allTags %}<button type="button" class="chip" data-tag="{{ t | lower }}" aria-pressed="false">{{ t }}</button>{% endfor %}
+  </div>
+</header>
+<main>
+  <p class="count" id="count">{{ collections.recipes.length }} recipes</p>
+  <ul class="cards" id="cards" data-view="grid">
+  {% for rec in collections.recipes %}
+    {% set r = rec.inputPath | recipe %}
+    {% set tl = rec.data.tags | tagList %}
+    <li class="card"
+        data-title="{{ rec.data.title | lower }}"
+        data-tags="{{ tl | join('|') | lower }}"
+        data-ings="{{ r.ingredientNames | join('|') | lower }}">
+      <a href="{{ rec.url }}">
+        <div class="card-img">
+          {% if rec.data.image %}<img src="{{ rec.data.image | imgUrl }}" alt="" loading="lazy">
+          {% else %}<span aria-hidden="true">{{ rec.data.title | first }}</span>{% endif %}
+        </div>
+        <div class="card-body">
+          <h2>{{ rec.data.title }}</h2>
+          <p class="card-meta">
+            {% if rec.data.total %}<span>{{ rec.data.total }}</span>{% endif %}
+            {% for t in tl %}<span class="tag">{{ t }}</span>{% endfor %}
+          </p>
+        </div>
+      </a>
+    </li>
+  {% endfor %}
+  </ul>
+  <p class="empty" id="empty" hidden>No recipes match.</p>
+</main>
+<script type="module" src="/assets/js/browse.js"></script>

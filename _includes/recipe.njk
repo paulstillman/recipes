@@ -1,0 +1,87 @@
+---
+layout: base.njk
+bodyClass: recipe-page
+---
+{% set r = page.inputPath | recipe %}
+{% set sv = servings | servings %}
+{% set hasNotes = r.notes or r.extra.length or log %}
+<header class="r-head">
+  <a class="back" href="/">← All recipes</a>
+  <div class="r-title">
+    <div>
+      <h1>{{ title }}</h1>
+      <p class="meta">
+        {% if yield %}<span>{{ yield }}</span>{% elif sv %}<span>{{ sv.n }} {{ sv.label }}</span>{% endif %}
+        {% if prep %}<span>Prep {{ prep }}</span>{% endif %}
+        {% if cook %}<span>Cook {{ cook }}</span>{% endif %}
+        {% if total %}<span>Total {{ total }}</span>{% endif %}
+        {% if rating %}<span class="stars" aria-label="{{ rating }} out of 5">{{ rating | stars }}</span>{% endif %}
+        {% if source %}<span><a href="{{ source }}" rel="noopener">{{ source_name or (source | host) }}</a></span>
+        {% elif source_name %}<span>{{ source_name }}</span>{% endif %}
+      </p>
+      {% set tl = tags | tagList %}
+      {% if tl.length %}<p class="tags">{% for t in tl %}<a class="tag" href="/?tag={{ t | urlencode }}">{{ t }}</a>{% endfor %}</p>{% endif %}
+    </div>
+    {% if image %}<a class="r-thumb" href="{{ image | imgUrl }}"><img src="{{ image | imgUrl }}" alt=""></a>{% endif %}
+  </div>
+  {% if r.intro %}<div class="intro">{{ r.intro | safe }}</div>{% endif %}
+  <div class="controls">
+    <div class="scaler" data-base="{{ sv.n if sv else '' }}" data-label="{{ sv.label if sv else '' }}">
+      <button type="button" data-step="-1" aria-label="Fewer servings">−</button>
+      <output aria-live="polite">{% if sv %}{{ sv.n }} {{ sv.label }}{% else %}1×{% endif %}</output>
+      <button type="button" data-step="1" aria-label="More servings">+</button>
+      <span class="quick">
+        <button type="button" data-factor="0.5">½×</button>
+        <button type="button" data-factor="1" aria-pressed="true">1×</button>
+        <button type="button" data-factor="2">2×</button>
+        <button type="button" data-factor="3">3×</button>
+      </span>
+    </div>
+    <label class="switch"><input type="checkbox" id="grams-toggle" checked> Grams</label>
+    <label class="switch" id="wake-label" hidden><input type="checkbox" id="wake-toggle" checked> Keep screen on</label>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Recipe sections">
+  <button type="button" data-pane="ingredients" aria-pressed="true">Ingredients</button>
+  <button type="button" data-pane="steps" aria-pressed="false">Steps</button>
+  {% if hasNotes %}<button type="button" data-pane="notes" aria-pressed="false">Notes</button>{% endif %}
+</nav>
+
+<main class="r-body" data-active="ingredients">
+  <section class="pane" id="pane-ingredients">
+    <h2>Ingredients</h2>
+    {% for g in r.ingredients %}
+      {% if g.title %}<h3>{{ g.title }}</h3>{% endif %}
+      <ul class="ings">
+      {% for i in g.items %}
+        <li class="ing"{% if i.qty != null %} data-qty="{{ i.qty }}" data-qty2="{{ i.qty2 if i.qty2 != null else '' }}" data-mid="{{ i.mid }}" data-sing="{{ i.unitSing }}" data-plur="{{ i.unitPlur }}" data-metric="{{ i.metric }}"{% endif %}{% if i.grams != null %} data-grams="{{ i.grams }}" data-gsrc="{{ i.gsrc }}"{% endif %}>
+          {% if i.amount %}<span class="amt" data-orig="{{ i.amount }}">{{ i.amount }}</span>{% endif %}
+          {% if i.gramsText %}<span class="g {{ i.gsrc }}" title="{{ 'Weight from the recipe' if i.gsrc == 'recipe' else ('Converted from the recipe\'s ounces/pounds' if i.gsrc == 'converted' else 'Estimated from typical ingredient density (not from the recipe)') }}">{{ i.gramsText }}</span>{% endif %}
+          <span class="name">{{ i.html | safe }}</span>
+        </li>
+      {% endfor %}
+      </ul>
+    {% endfor %}
+    <p class="legend">≈ = weight calculated, not from the recipe</p>
+  </section>
+
+  <section class="pane" id="pane-steps">
+    <h2>Steps</h2>
+    <div class="steps">{{ r.instructions | safe }}</div>
+  </section>
+
+  {% if hasNotes %}
+  <section class="pane" id="pane-notes">
+    {% if r.notes %}<h2>Notes</h2>{{ r.notes | safe }}{% endif %}
+    {% for s in r.extra %}<h2>{{ s.title }}</h2>{{ s.html | safe }}{% endfor %}
+    {% if log %}
+      <h2>Made it</h2>
+      <ul class="log">
+      {% for entry in log %}<li><time>{{ entry.date | fmtDate }}</time>{% if entry.note %} — {{ entry.note }}{% endif %}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+  {% endif %}
+</main>
+<script type="module" src="/assets/js/recipe.js"></script>
