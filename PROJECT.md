@@ -51,7 +51,7 @@ Clean and minimal: lots of whitespace, neutral colors, large readable type. Ligh
 
 - **"Add ingredients to Apple Reminders" button**: there is no web API for Reminders, so this goes through an Apple Shortcut, triggered by a link like `shortcuts://run-shortcut?name=Add%20Groceries&input=text&text=...`. The Shortcut adds each line to a shared household Reminders list. Works on iPhone/iPad/Mac Safari. One-time setup per device: install the Shortcut.
 - **Meal planning** for the household. This needs shared state that syncs, which a static site doesn't have on its own. Options when we get there: (a) the plan lives in a markdown/JSON file in the repo, edited via commits; (b) a free hosted backend (e.g. Supabase or Firebase free tier); (c) keep the plan in a shared Reminders list or Apple Notes through Shortcuts.
-- **URL import tool** (confirmed wanted): given a recipe URL, extract everything into a new `recipes/<slug>.md` in the standard format: title, servings, times, ingredients (keeping any grams the site gives), steps, source URL, and the photo (downloaded into `recipes/images/`). Most recipe sites embed schema.org/Recipe JSON-LD, which makes extraction reliable; fall back to reading the page for sites that don't.
+- ~~**URL import tool**~~ Done 2026-10-17: `scripts/import-url.js` (usage in README). Reads schema.org Recipe JSON-LD (microdata fallback), plus ingredient groups and notes from WP Recipe Maker / Tasty Recipes / Dotdash Meredith recipe cards and NYT Cooking page data. Tested on Budget Bytes, King Arthur, NYT Cooking, Bon Appétit and Serious Eats. Serious Eats / AllRecipes (Dotdash Meredith) block non-browser requests, so for those, save the page from the browser and import the file.
 - ~~**Convert existing markdown**~~ Done 2026-10-17: 5 recipes converted with `scripts/import-md.js`. Originals live in iCloud (`~/Library/Mobile Documents/com~apple~CloudDocs/Recipes/Recipes`). macOS blocks Claude from reading iCloud Drive, so new ones need to be copied into `_import/` first.
 - Check-off for ingredients/steps; photo resizing at build time (`@11ty/eleventy-img`); fuzzy search (Fuse.js) if plain substring search gets limiting.
 
@@ -69,4 +69,4 @@ Clean and minimal: lots of whitespace, neutral colors, large readable type. Ligh
 ## Next steps
 
 1. Create the GitHub repo `recipes`, push, and set Settings → Pages → Source to "GitHub Actions".
-2. Build the URL import tool.
+2. ~~Build the URL import tool.~~ Done.

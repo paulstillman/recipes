@@ -67,6 +67,30 @@ node scripts/import-md.js _import/*.md
 
 This writes `recipes/<slug>.md` and won't overwrite existing files unless you add `--force`. `_import/` is git-ignored. A yield range like `6 to 8 servings` becomes `servings: 6` (for the scaler) plus `yield: 6–8 servings` (shown on the page).
 
+## Importing from a recipe website
+
+```bash
+node scripts/import-url.js https://www.budgetbytes.com/chicken-and-dumplings/
+```
+
+This writes `recipes/<slug>.md` and downloads the photo to `recipes/images/<slug>.<ext>`. Check the result before publishing: suggested tags come from the site's categories and keywords, so trim or rename them to match your own.
+
+What it picks up: title, intro (the site's description), servings/yield, prep/cook/total times, ingredients (with the site's group headings, e.g. "For the crust", and any grams it gives), numbered steps (in sections if the site has them), notes, source link and site name. It reads the schema.org Recipe data most recipe sites embed (JSON-LD, or microdata as a fallback). Price tags like Budget Bytes' `($0.22)` are removed, and NYT-style `1 cup/120 grams` becomes `1 cup (120 g)`.
+
+Options:
+
+- `--force`: overwrite an existing recipe file.
+- `--no-image`: don't download the photo.
+- `--dry-run`: print the result without writing anything.
+
+Some sites (Serious Eats, AllRecipes and other Dotdash Meredith sites) only serve recipes to a real browser. The tool says so when this happens. Open the page in your browser, save it with **File → Save Page As…**, then import the saved file:
+
+```bash
+node scripts/import-url.js ~/Downloads/the-food-lab-chocolate-chip-cookies.html
+```
+
+The source link is taken from the saved page. If it's missing, add `--source <url>`.
+
 ## Running locally
 
 Requires Node 18+.

@@ -8,6 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import { slugify, shortTime } from "./helpers.js";
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
@@ -18,12 +19,6 @@ if (!files.length) {
   console.error("Usage: node scripts/import-md.js [--force] <file.md>...");
   process.exit(1);
 }
-
-const slugify = (s) =>
-  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
-const shortTime = (s) =>
-  s.replace(/\bhours?\b/gi, "hr").replace(/\bminutes?\b|\bmins\b/gi, "min").replace(/\s+/g, " ").trim();
 
 function convert(text) {
   const lines = text.split(/\r?\n/);
