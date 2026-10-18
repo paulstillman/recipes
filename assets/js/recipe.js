@@ -1,5 +1,6 @@
 import { formatQty, formatGrams } from "./format.js";
 import { getToken, pending, saveStatus } from "./edit.js";
+import { setupReminders } from "./reminders.js";
 
 const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -142,3 +143,5 @@ statusSelect.addEventListener("change", async () => {
     statusSelect.disabled = false;
   }
 });
+
+setupReminders();

@@ -55,6 +55,7 @@ bodyClass: recipe-page
     {% endif %}
     <label class="switch"><input type="checkbox" id="grams-toggle" checked> Grams</label>
     <label class="switch" id="wake-label" hidden><input type="checkbox" id="wake-toggle" checked> Keep screen on</label>
+    <button type="button" class="reminders-btn" id="reminders-btn">Add to Reminders</button>
   </div>
 </header>
 
@@ -107,4 +108,18 @@ bodyClass: recipe-page
   </section>
   {% endif %}
 </main>
+<dialog class="reminders" id="reminders" data-shortcut="{{ site.shortcut }}">
+  <form method="dialog" id="reminders-form">
+    <h2>Add to Reminders</h2>
+    <p class="hint">Untick what you already have. Unticked items are remembered as pantry staples on this device.</p>
+    <p class="bulk"><button type="button" data-all="1">Tick all</button> <button type="button" data-all="0">Untick all</button></p>
+    <ul id="reminders-items"></ul>
+    <label class="list-pick">List <input id="reminders-list" list="reminders-lists" autocomplete="off" required><datalist id="reminders-lists"></datalist></label>
+    <p class="actions">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button value="send" class="primary" id="reminders-send">Add</button>
+    </p>
+    <p class="hint">Needs the “{{ site.shortcut }}” Shortcut on this device (<a href="{{ site.sourceRepoUrl }}#adding-ingredients-to-apple-reminders">setup</a>).</p>
+  </form>
+</dialog>
 <script type="module" src="/assets/js/recipe.js"></script>

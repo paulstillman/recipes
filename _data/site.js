@@ -5,4 +5,7 @@ export default {
   branch: "main",
   builtAt: new Date().toISOString(),
   statuses: ["not tried", "rarely", "regularly", "staple"],
+  // Name of the Apple Shortcut that "Add to Reminders" runs (see README).
+  shortcut: "Recipe to Reminders",
+  sourceRepoUrl: "https://github.com/paulstillman/recipes",
 };

@@ -88,6 +88,28 @@ Ingredient groups named after a method switch along with the steps. If the ingre
 
 Section names that are recognised: `Ingredients`; `Instructions` / `Directions` / `Method` / `Steps`; `Notes`.
 
+## Adding ingredients to Apple Reminders
+
+Each recipe page has an **Add to Reminders** button. It opens a checklist of the ingredients, with the amounts as currently scaled and, for recipes with an Instant Pot / slow cooker toggle, only the version on show. Untick what you already have, edit any line, pick the Reminders list, and press **Add**.
+
+- Salt, pepper, oils, vinegar, flour, sugar and common spices start unticked.
+- What you untick is remembered on that device and starts unticked next time; ticking a staple makes it start ticked from then on.
+- The list name you used last is the default next time (and earlier ones are suggested).
+
+Websites can't add to Reminders directly, so the button runs an Apple Shortcut called **Recipe to Reminders**, passing it the list name and the items. Set it up once (it syncs to your other Apple devices through iCloud):
+
+1. Open the **Shortcuts** app, tap **+**, and name the shortcut **Recipe to Reminders** (exactly).
+2. Add **Get Dictionary from Input**, with input **Shortcut Input**.
+3. Add **Get Dictionary Value**: Get **Value** for key `list` in **Dictionary**. Then add **Set Variable**, named `List Name`, set to that Dictionary Value.
+4. Add **Get Dictionary Value**: Get **Value** for key `items` in **Dictionary** (the dictionary from step 2, not the list name).
+5. Add **Repeat with Each** item in that Dictionary Value.
+6. Inside the repeat, add **Add New Reminder**: tap the title and pick **Repeat Item**; tap the list and pick the variable **List Name**.
+7. Run it once from the website; allow access to Reminders when asked.
+
+If your version of Shortcuts won't let you put a variable in the reminder's list field, choose a fixed list there instead: everything then goes to that list, whatever the website's list box says.
+
+The Reminders list must already exist with that name. After adding, Shortcuts returns you to the recipe page.
+
 ## Importing my old markdown notes
 
 Recipes in my older notes format (`# Title`, `**Source:**` / `**Yield:**` / `**Tags:** #a #b` lines, `- [ ]` ingredients, `## Directions`) can be converted automatically:
