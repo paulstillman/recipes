@@ -10,7 +10,7 @@
   <script>document.documentElement.classList.add("js")</script>
   <link rel="stylesheet" href="/assets/style.css">
 </head>
-<body class="{{ bodyClass }}">
+<body class="{{ bodyClass }}" data-repo="{{ site.repo }}" data-branch="{{ site.branch }}" data-built="{{ site.builtAt }}">
 {{ content | safe }}
 </body>
 </html>

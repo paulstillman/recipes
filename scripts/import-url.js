@@ -4,6 +4,7 @@
 //   node scripts/import-url.js --force <url>        # overwrite an existing file
 //   node scripts/import-url.js --no-image <url>     # don't download the photo
 //   node scripts/import-url.js --dry-run <url>      # print the result, write nothing
+//   node scripts/import-url.js --tag dinner --status "not tried" <url>...  # several at once
 //   node scripts/import-url.js page.html            # a page saved from the browser
 //   node scripts/import-url.js --source <url> page.html  # ...if it has no canonical link
 //
@@ -14,14 +15,16 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
-import { slugify, shortTime } from "./helpers.js";
+import { slugify, shortTime, normalizeTags } from "./helpers.js";
 
-const USAGE = "Usage: node scripts/import-url.js [--force] [--no-image] [--dry-run] [--source <url>] <url | page.html>";
+const USAGE =
+  "Usage: node scripts/import-url.js [--force] [--no-image] [--dry-run] [--tag <tag>]... [--status <status>] [--source <url>] <url | page.html>...";
+const STATUSES = ["not tried", "rarely", "regularly", "staple"];
 const UA = "Mozilla/5.0 (compatible; recipe-import/1.0)";
 const outDir = new URL("../recipes/", import.meta.url).pathname;
 
 const args = process.argv.slice(2);
-const opts = { force: false, image: true, dryRun: false, source: null };
+const opts = { force: false, image: true, dryRun: false, source: null, tags: [], status: null };
 const inputs = [];
 for (let i = 0; i < args.length; i++) {
   const a = args[i];
@@ -29,14 +32,30 @@ for (let i = 0; i < args.length; i++) {
   else if (a === "--no-image") opts.image = false;
   else if (a === "--dry-run") opts.dryRun = true;
   else if (a === "--source") opts.source = args[++i];
-  else if (a.startsWith("--")) fail(`unknown option ${a}\n${USAGE}`);
+  else if (a === "--tag") opts.tags.push(slugify(args[++i] || ""));
+  else if (a === "--status") opts.status = args[++i];
+  else if (a.startsWith("--")) {
+    console.error(`unknown option ${a}\n${USAGE}`);
+    process.exit(1);
+  }
   else inputs.push(a);
 }
-if (inputs.length !== 1) fail(USAGE);
-
-function fail(msg) {
-  console.error(msg);
+if (!inputs.length) {
+  console.error(USAGE);
   process.exit(1);
+}
+if (opts.status && !STATUSES.includes(opts.status)) {
+  console.error(`--status must be one of: ${STATUSES.join(", ")}`);
+  process.exit(1);
+}
+if (opts.source && inputs.length > 1) {
+  console.error("--source only works with a single input");
+  process.exit(1);
+}
+
+class ImportError extends Error {}
+function fail(msg) {
+  throw new ImportError(msg);
 }
 
 // ---------- text helpers ----------
@@ -191,7 +210,7 @@ function microdata(html) {
   const recipe = {
     name: get("name")[0],
     description: get("description")[0],
-    image: get("image")[0],
+    image: get("image").map((v) => (v.includes("<") ? v.match(/\b(?:content|src|href)=["'](https?:[^"']+)/)?.[1] : v)).find(Boolean),
     recipeYield: get("recipeYield")[0],
     prepTime: get("prepTime")[0],
     cookTime: get("cookTime")[0],
@@ -243,25 +262,11 @@ function yields(v) {
   return { yield: y };
 }
 
-const TAG_MAP = {
-  "main-course": "dinner", "main-dish": "dinner", "main-dishes": "dinner", entree: "dinner", entrees: "dinner", dinners: "dinner", main: "dinner",
-  side: "side-dish", sides: "side-dish", "side-dishes": "side-dish", desserts: "dessert", soups: "soup", salads: "salad",
-  breakfasts: "breakfast", snacks: "snack", appetizers: "appetizer", cookie: "cookies", vegetarian: "vegetarian",
-};
-
-function suggestTags(r, title) {
-  const titleSlug = slugify(title);
+function suggestTags(r) {
   const raw = [r.recipeCategory, r.recipeCuisine, r.keywords].flatMap((v) =>
-    list(v).flatMap((s) => (typeof s === "string" ? s.split(/[,;|]/) : []))
+    list(v).flatMap((s) => (typeof s === "string" ? text(s).split(/[,;|/]/) : []))
   );
-  const tags = [];
-  for (const t of raw) {
-    let tag = slugify(text(t)).replace(/-recipes?$|^recipes?-|^recipes?$/, "");
-    tag = TAG_MAP[tag] || tag;
-    if (!tag || tag.length > 20 || tag.split("-").length > 2 || tag === titleSlug || /^\d+$/.test(tag)) continue;
-    if (!tags.includes(tag)) tags.push(tag);
-  }
-  return tags.slice(0, 5);
+  return normalizeTags(raw, 5);
 }
 
 // Ingredient strings tidied for lib/recipe.js.
@@ -285,7 +290,11 @@ function instructions(v, resolve) {
   let current = { title: null, steps: [] };
   const push = (s) => {
     const t = text(s).replace(/^(step\s*)?\d+[.):]\s+/i, "");
-    if (t) current.steps.push(t);
+    // A short "step" like "For your Slow Cooker:" is really a section heading.
+    if (/^[^.]{1,60}:$/.test(t)) {
+      if (current.title || current.steps.length) sections.push(current);
+      current = { title: t.replace(/:$/, ""), steps: [] };
+    } else if (t) current.steps.push(t);
   };
   const splitHtml = (s) => {
     s = String(s);
@@ -429,6 +438,20 @@ function groupTitle(t) {
   return t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t;
 }
 
+// "Recipe: Paleo Instant Pot Saag (Whole30, Keto)" -> "Paleo Instant Pot Saag",
+// "Whole30 Picadillo - Easy and Delicious" -> "Whole30 Picadillo"
+function tidyTitle(t) {
+  const out = t
+    .replace(/^recipe:\s*/i, "")
+    .replace(/\s+recipe$/i, "")
+    .replace(/\s*\([^()]*\)\s*$/, "")
+    .replace(/\s+[-–|]\s+[^-–|]+$/, "")
+    .replace(/\s+recipe\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return out || t;
+}
+
 // ---------- assemble ----------
 
 function meta(html, prop) {
@@ -443,7 +466,7 @@ function build(html, pageUrl) {
   if (!found) fail("No schema.org Recipe found on this page (neither JSON-LD nor microdata).");
   const { recipe: r, resolve } = found;
 
-  const title = text(r.name || r.headline || meta(html, "og:title")).replace(/\s+Recipe$/i, "");
+  const title = tidyTitle(text(r.name || r.headline || meta(html, "og:title")));
   if (!title) fail("The recipe has no name.");
   const canonical = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)/i)?.[1] || meta(html, "og:url");
   const source = pageUrl || (canonical && decode(canonical));
@@ -454,7 +477,7 @@ function build(html, pageUrl) {
   const publisher = resolve(list(r.publisher)[0]);
 
   const data = { title };
-  const tags = suggestTags(r, title);
+  const tags = [...new Set([...opts.tags.filter(Boolean), ...suggestTags(r)])].slice(0, 6);
   if (tags.length) data.tags = tags;
   Object.assign(data, yields(r.recipeYield ?? r.yield));
   for (const k of ["prep", "cook", "total"]) {
@@ -464,6 +487,7 @@ function build(html, pageUrl) {
   if (source) data.source = source;
   const sourceName = meta(html, "og:site_name") || publisher?.name || found.siteName || host;
   if (sourceName) data.source_name = text(sourceName);
+  if (opts.status) data.status = opts.status;
 
   const ingredients = list(r.recipeIngredient || r.ingredients).map(cleanIngredient).filter(Boolean);
   if (!ingredients.length) console.warn("warning: no ingredients found");
@@ -514,25 +538,37 @@ async function downloadImage(url, slug) {
   return rel;
 }
 
-const { html, url } = await load(inputs[0]);
-const { data, body, image } = build(html, url);
-const slug = slugify(data.title);
-const out = path.join(outDir, `${slug}.md`);
-const rel = path.relative(process.cwd(), out);
+async function importOne(input) {
+  const { html, url } = await load(input);
+  const { data, body, image } = build(html, url);
+  const slug = slugify(data.title);
+  const out = path.join(outDir, `${slug}.md`);
+  const rel = path.relative(process.cwd(), out);
 
-if (opts.dryRun) {
-  if (image) data.image = image;
-  process.stdout.write(matter.stringify(body, data));
-  process.exit(0);
+  if (opts.dryRun) {
+    if (image) data.image = image;
+    process.stdout.write(matter.stringify(body, data));
+    return;
+  }
+  if (fs.existsSync(out) && !opts.force) fail(`exists ${rel} (use --force to overwrite)`);
+  if (image && opts.image) {
+    try {
+      data.image = await downloadImage(new URL(image, url || undefined).href, slug);
+    } catch (e) {
+      console.warn(`warning: couldn't download the photo (${e.message}); linking to it instead`);
+      data.image = image;
+    }
+  }
+  fs.writeFileSync(out, matter.stringify(body, data));
+  console.log(`wrote  ${rel}${data.image && !/^https?:/.test(data.image) ? ` + recipes/${data.image}` : ""}`);
 }
-if (fs.existsSync(out) && !opts.force) fail(`exists ${rel} (use --force to overwrite)`);
-if (image && opts.image) {
+
+for (const input of inputs) {
   try {
-    data.image = await downloadImage(new URL(image, url || undefined).href, slug);
+    await importOne(input);
   } catch (e) {
-    console.warn(`warning: couldn't download the photo (${e.message}); linking to it instead`);
-    data.image = image;
+    if (!(e instanceof ImportError)) throw e;
+    console.error(inputs.length > 1 ? `failed ${input}\n  ${e.message.replace(/\n/g, "\n  ")}` : e.message);
+    process.exitCode = 1;
   }
 }
-fs.writeFileSync(out, matter.stringify(body, data));
-console.log(`wrote  ${rel}${data.image && !/^https?:/.test(data.image) ? ` + recipes/${data.image}` : ""}`);

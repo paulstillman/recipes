@@ -1,4 +1,5 @@
 import { formatQty, formatGrams } from "./format.js";
+import { getToken, pending, saveStatus } from "./edit.js";
 
 const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -87,3 +88,57 @@ for (const tab of tabs) {
     window.scrollTo({ top: Math.min(window.scrollY, document.querySelector(".tabs").offsetTop) });
   });
 }
+
+// Cooking method (e.g. Instant Pot / Slow cooker), remembered per device
+const methodButtons = [...document.querySelectorAll(".variant-toggle button")];
+if (methodButtons.length) {
+  const setMethod = (key) => {
+    body.dataset.variant = key;
+    methodButtons.forEach((b) => b.setAttribute("aria-pressed", b.dataset.variant === key));
+    document.querySelectorAll(".variant").forEach((el) => (el.hidden = el.dataset.variant !== key));
+  };
+  methodButtons.forEach((b) =>
+    b.addEventListener("click", () => {
+      setMethod(b.dataset.variant);
+      store.set("recipes:method", b.dataset.variant);
+    })
+  );
+  const saved = store.get("recipes:method");
+  setMethod(methodButtons.some((b) => b.dataset.variant === saved) ? saved : methodButtons[0].dataset.variant);
+}
+
+// Status: saved straight to the recipe's markdown file on GitHub
+const statusSelect = document.getElementById("status");
+const statusMsg = document.getElementById("status-msg");
+const setupUrl = document.querySelector(".back").getAttribute("href") + "?setup#editing";
+const showStatus = (value) => {
+  statusSelect.value = value;
+  statusSelect.dataset.status = value;
+};
+const waiting = pending()[statusSelect.dataset.path];
+if (waiting) {
+  showStatus(waiting.status);
+  statusMsg.textContent = "Saved; the site updates in a minute or two";
+}
+let current = statusSelect.value;
+statusSelect.addEventListener("change", async () => {
+  const value = statusSelect.value;
+  if (!getToken()) {
+    showStatus(current);
+    statusMsg.innerHTML = `To save from here, <a href="${setupUrl}">set up editing on this device</a> first.`;
+    return;
+  }
+  statusSelect.disabled = true;
+  statusMsg.textContent = "Saving…";
+  try {
+    await saveStatus(statusSelect.dataset.path, value, statusSelect.dataset.title);
+    current = value;
+    showStatus(value);
+    statusMsg.textContent = "Saved; the site updates in a minute or two";
+  } catch (e) {
+    showStatus(current);
+    statusMsg.textContent = `Not saved: ${e.message}.`;
+  } finally {
+    statusSelect.disabled = false;
+  }
+});

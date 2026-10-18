@@ -21,6 +21,17 @@ bodyClass: recipe-page
       </p>
       {% set tl = tags | tagList %}
       {% if tl.length %}<p class="tags">{% for t in tl %}<a class="tag" href="/?tag={{ t | urlencode }}">{{ t }}</a>{% endfor %}</p>{% endif %}
+      <p class="status-row">
+        <label class="status-pick">
+          <span class="visually-hidden">Status</span>
+          <select id="status" data-path="{{ page.inputPath | replace('./', '') }}" data-title="{{ title }}" data-status="{{ status }}">
+            <option value=""{% if not status %} selected{% endif %}>Status not set</option>
+            {% for st in site.statuses %}<option value="{{ st }}"{% if st == status %} selected{% endif %}>{{ st | capitalize }}</option>{% endfor %}
+          </select>
+        </label>
+        <span class="status-msg" id="status-msg" role="status"></span>
+        <a class="edit-link" href="https://github.com/{{ site.repo }}/edit/{{ site.branch }}/{{ page.inputPath | replace('./', '') }}" rel="noopener">Edit on GitHub</a>
+      </p>
     </div>
     {% if image %}<a class="r-thumb" href="{{ image | imgUrl }}"><img src="{{ image | imgUrl }}" alt=""></a>{% endif %}
   </div>
@@ -37,6 +48,11 @@ bodyClass: recipe-page
         <button type="button" data-factor="3">3×</button>
       </span>
     </div>
+    {% if r.variants.length %}
+    <div class="variant-toggle" role="group" aria-label="Cooking method">
+      {% for v in r.variants %}<button type="button" data-variant="{{ v.key }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ v.label }}</button>{% endfor %}
+    </div>
+    {% endif %}
     <label class="switch"><input type="checkbox" id="grams-toggle" checked> Grams</label>
     <label class="switch" id="wake-label" hidden><input type="checkbox" id="wake-toggle" checked> Keep screen on</label>
   </div>
@@ -48,10 +64,11 @@ bodyClass: recipe-page
   {% if hasNotes %}<button type="button" data-pane="notes" aria-pressed="false">Notes</button>{% endif %}
 </nav>
 
-<main class="r-body" data-active="ingredients">
+<main class="r-body" data-active="ingredients"{% if r.variants.length %} data-variant="{{ r.variants[0].key }}"{% endif %}>
   <section class="pane" id="pane-ingredients">
     <h2>Ingredients</h2>
     {% for g in r.ingredients %}
+      {% if g.variant %}<div class="variant" data-variant="{{ g.variant }}">{% endif %}
       {% if g.title %}<h3>{{ g.title }}</h3>{% endif %}
       <ul class="ings">
       {% for i in g.items %}
@@ -62,13 +79,19 @@ bodyClass: recipe-page
         </li>
       {% endfor %}
       </ul>
+      {% if g.variant %}</div>{% endif %}
     {% endfor %}
     <p class="legend">≈ = weight calculated, not from the recipe</p>
   </section>
 
   <section class="pane" id="pane-steps">
     <h2>Steps</h2>
-    <div class="steps">{{ r.instructions | safe }}</div>
+    <div class="steps">
+    {% for b in r.steps %}
+      {% if b.variant %}<div class="variant" data-variant="{{ b.variant }}"><h3 class="variant-title">{{ b.title }}</h3>{{ b.html | safe }}</div>
+      {% else %}{% if b.title %}<h3>{{ b.title }}</h3>{% endif %}{{ b.html | safe }}{% endif %}
+    {% endfor %}
+    </div>
   </section>
 
   {% if hasNotes %}

@@ -12,6 +12,10 @@ bodyClass: home
       <button type="button" data-view="list" aria-pressed="false" title="List">☰</button>
     </div>
   </div>
+  <div class="chips status-chips" role="group" aria-label="Status">
+    {% for st in site.statuses %}<button type="button" class="chip" data-status="{{ st }}" aria-pressed="false">{{ st | capitalize }}</button>{% endfor %}
+    <button type="button" class="chip" data-status="" aria-pressed="false">Not set</button>
+  </div>
   <div class="chips" id="chips">
     {% for t in collections.recipes | allTags %}<button type="button" class="chip" data-tag="{{ t | lower }}" aria-pressed="false">{{ t }}</button>{% endfor %}
   </div>
@@ -25,6 +29,8 @@ bodyClass: home
     <li class="card"
         data-title="{{ rec.data.title | lower }}"
         data-tags="{{ tl | join('|') | lower }}"
+        data-status="{{ rec.data.status }}"
+        data-path="{{ rec.inputPath | replace('./', '') }}"
         data-ings="{{ r.ingredientNames | join('|') | lower }}">
       <a href="{{ rec.url }}">
         <div class="card-img">
@@ -34,6 +40,7 @@ bodyClass: home
         <div class="card-body">
           <h2>{{ rec.data.title }}</h2>
           <p class="card-meta">
+            <span class="status" data-status="{{ rec.data.status }}"{% if not rec.data.status %} hidden{% endif %}>{{ rec.data.status | capitalize }}</span>
             {% if rec.data.total %}<span>{{ rec.data.total }}</span>{% endif %}
             {% for t in tl %}<span class="tag">{{ t }}</span>{% endfor %}
           </p>
@@ -43,5 +50,21 @@ bodyClass: home
   {% endfor %}
   </ul>
   <p class="empty" id="empty" hidden>No recipes match.</p>
+
+  <details class="editing" id="editing">
+    <summary>Editing from this device</summary>
+    <p>To change a recipe's status from its page, this browser needs a GitHub token that can edit the <code>{{ site.repo }}</code> repo. It's stored only in this browser.</p>
+    <ol>
+      <li>On GitHub, open <a href="https://github.com/settings/personal-access-tokens/new" rel="noopener">Settings → Developer settings → Fine-grained tokens → Generate new token</a>.</li>
+      <li>Repository access: <b>Only select repositories</b> → <code>{{ site.repo }}</code>. Permissions: <b>Contents → Read and write</b>. Pick an expiry you're happy with.</li>
+      <li>Generate, copy the token, and paste it here.</li>
+    </ol>
+    <form id="token-form">
+      <input type="password" id="token" placeholder="github_pat_…" autocomplete="off" spellcheck="false" aria-label="GitHub token">
+      <button type="submit">Save</button>
+      <button type="button" id="token-forget">Remove</button>
+    </form>
+    <p class="token-msg" id="token-msg" role="status"></p>
+  </details>
 </main>
 <script type="module" src="/assets/js/browse.js"></script>
